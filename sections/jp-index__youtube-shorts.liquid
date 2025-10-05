@@ -1,0 +1,915 @@
+{% comment %}
+** Video **
+{% endcomment %}
+
+{% comment %} Display nothing if iframe_video not present {% endcomment %}
+{% if section.settings.iframe_metafield_url %}
+  {% assign iframe_video = section.settings.iframe_metafield_url %}
+{% else %}
+  {% assign iframe_video = section.settings.iframe_video %}
+{% endif %}
+{% unless iframe_video == blank %}
+
+{% liquid
+  assign id = section.id
+  assign image = section.settings.image
+  assign pretext = section.settings.pretext
+  assign title = section.settings.title
+  assign subtitle = section.settings.subtitle
+  assign pretext_color = section.settings.pretext_color
+  assign pretext_color_mobile = section.settings.pretext_color_mobile
+  assign title_color = section.settings.heading_color
+  assign title_color_mobile = section.settings.heading_color_mobile
+  assign subtitle_color = section.settings.subheading_color
+  assign subtitle_color_mobile = section.settings.subheading_color_mobile
+  assign button_label = section.settings.button_label
+  assign button_style = section.settings.button_style
+  assign mute = section.settings.mute_video
+  assign autoloop = section.settings.autoloop
+
+  # Extract YouTube Video ID (handles shorts, watch, and youtu.be URLs)
+  if iframe_video contains '/shorts/'
+    assign video_id = iframe_video | split: '/shorts/' | last | split: '?' | first
+  elsif iframe_video contains 'youtu.be'
+    assign video_id = iframe_video | split: 'youtu.be/' | last | split: '?' | first 
+  else 
+    assign video_id = iframe_video | split: 'v=' | last | split: '&' | first
+  endif
+
+  # Assign iframe settings
+  assign iframe_settings = ""
+  if mute 
+    assign iframe_settings = iframe_settings | append: '&amp;mute=1'
+  endif
+  if autoloop
+    assign iframe_settings = iframe_settings | append: '&amp;loop=1&amp;playlist=' | append: video_id
+  endif
+
+  # Is the color set to transparent?
+  assign heading_alpha = title_color | color_extract: 'alpha'
+  assign preheading_alpha = pretext_color | color_extract: 'alpha'
+  assign subheading_alpha = subtitle_color | color_extract: 'alpha'
+  assign mobile_headline_alpha = section.settings.heading_color_mobile | color_extract: 'alpha'
+  assign mobile_preheading_alpha = section.settings.pretext_color_mobile | color_extract: 'alpha'
+  assign mobile_subtitle_alpha = section.settings.subheading_color_mobile | color_extract: 'alpha'
+%}
+
+
+{% comment %} Section specific CSS {% endcomment %}
+{%- capture section_css -%}
+  {%- if section.settings.overlay_style != 'none' -%}
+  .overlay {
+      background-image: linear-gradient({{ section.settings.gradient_rotation }}deg, rgba(255,255,255,0), {{ section.settings.gradient }});
+      background-color: {{ section.settings.video_overlay_color }};
+      opacity: {{ section.settings.background_opacity | divided_by: 100.00 }};
+    }
+  {%- endif -%}
+
+    deferred-iframe[loaded] > .image-wrapper,
+    deferred-iframe[loaded] > .video__text-container {
+      display: none;
+    }
+
+    deferred-iframe[loaded] > .youtube-iframe-player {
+      display: block;
+    }
+
+    .youtube-iframe-player {
+      display: none;
+      height: 0;
+      position: relative;
+    }
+
+    .youtube-iframe-player iframe {
+        border: 0;
+        height: 100%;
+        left: 0;
+        position: absolute;
+        top: 0;
+        -webkit-user-select: none;
+        user-select: none;
+        width: 100%;
+    }
+
+    .image-wrapper {    
+      position: relative;
+    }
+
+    .youtube-thumbnail {
+      height: 100%;
+    }
+
+    .deferred-play-button {
+      display: block;
+      background: #fff;
+      border-radius: 0;
+      border: 1px solid rgba(0, 0, 0, .05);
+      padding: 3px;
+      color: #222;
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      overflow: visible;
+      transition: all .3s ease;
+    }
+
+    .deferred-play-button svg {
+      display: block;
+      width: 52px;
+      height: 52px;
+      left: auto;
+      position: relative;
+    }
+
+    #shopify-section-{{ id }} .deferred-play-button {
+      opacity: 1;
+    }
+
+  .video__title {
+    color: {% if heading_alpha != 0 %}{{ title_color }}{% else %}{{ settings.heading_color }}{% endif %};
+  }
+
+  .video__subtitle {
+    color: {% if subheading_alpha != 0 %}{{ subtitle_color }}{% else %}{{ settings.heading_color }}{% endif %};
+  }
+
+  .pretext {
+    color: {% if preheading_alpha != 0 %}{{ pretext_color }}{% else %}{{ settings.heading_color }}{% endif %};
+  }
+
+  .video__text-container .hidden {
+    display: none;
+  }
+
+{%- endcapture -%}
+
+{% style %}
+  #shopify-section-{{ id }} {
+    padding: {{ section.settings.padding_top }}px {{ section.settings.padding_right }}px {{ section.settings.padding_bottom }}px {{ section.settings.padding_left }}px;
+
+    {% if section.settings.width == 'wide' %}
+      width: 100%;
+    {% elsif section.settings.width == 'half' %}
+      width: 50%;
+    {% endif %}
+  }
+
+  /* YouTube Shorts - vertical 9:16 aspect ratio */
+  #shopify-section-{{ id }} .shorts-container {
+    max-width: {{ section.settings.max_width }}px;
+    margin: 0 auto;
+    background: rgba(255, 0, 0, 0.1); /* debug: light red */
+  }
+
+  #shopify-section-{{ id }} .video-wrapper {
+    display: block !important;
+    background: rgba(0, 255, 0, 0.1); /* debug: light green */
+  }
+
+  #shopify-section-{{ id }} .youtube-iframe-player {
+    padding-bottom: 177.78% !important; /* 9:16 aspect ratio for vertical video */
+    height: 0 !important;
+    position: relative !important;
+    width: 100% !important;
+    background: rgba(0, 0, 255, 0.1); /* debug: light blue */
+  }
+
+  #shopify-section-{{ id }} .youtube-iframe-player iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  #shopify-section-{{ id }} .image-wrapper {
+    width: 100%;
+    position: relative;
+    padding-bottom: 177.78%;
+    background: rgba(255, 255, 0, 0.1); /* debug: light yellow */
+  }
+
+  #shopify-section-{{ id }} .image-wrapper img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media only screen and (max-width: 798px) {
+    #shopify-section-{{ id }} {
+      padding: {{ section.settings.padding_top_mobile }}px 0 {{ section.settings.padding_bottom_mobile }}px;
+    }
+
+    #shopify-section-{{ id }} .shorts-container {
+      max-width: 100% !important;
+    }
+  }
+
+  {%
+    render 'css-loop',
+    css: section_css,
+    id: id,
+  %}
+
+  {%
+    render 'css-loop',
+    css: section.settings.custom_css,
+    id: id,
+  %}
+
+  @media only screen and (min-width: 480px) {
+    #shopify-section-{{ id }} .video__text-wrapper {
+      width: {{ section.settings.text_width }}%;
+    }
+  }
+
+  @media only screen and (max-width: 480px) {
+    #shopify-section-{{ id }} .video__title {
+      color: {% if mobile_headline_alpha != 0 %}{{ title_color_mobile }}{% endif %};
+    }
+
+    #shopify-section-{{ id }} .video__subtitle {
+      color: {% if mobile_subtitle_alpha != 0 %}{{ subtitle_color_mobile }}{% endif %};
+    }
+
+    #shopify-section-{{ id }} .pretext {
+      color: {% if mobile_preheading_alpha != 0 %}{{ pretext_color_mobile }}{% endif %};
+    }
+  }
+{% endstyle %}
+
+  <script>
+    console.log('=== YouTube Shorts Section Debug ===');
+    console.log('Video ID: {{  video_id }}');
+    console.log('URL: {{ iframe_video }}');
+    console.log('Max Width Setting: {{ section.settings.max_width }}px');
+    console.log('Section ID: {{ id }}');
+    console.log('========================');
+    
+    // Check if styles are being applied
+    document.addEventListener('DOMContentLoaded', function() {
+      const wrapper = document.querySelector('#shopify-section-{{ id }} .video-wrapper');
+      const shortsContainer = document.querySelector('#shopify-section-{{ id }} .shorts-container');
+      const player = document.querySelector('#shopify-section-{{ id }} .youtube-iframe-player');
+      
+      console.log('=== Element Detection ===');
+      console.log('Wrapper found:', !!wrapper);
+      console.log('Shorts container found:', !!shortsContainer);
+      console.log('Player found:', !!player);
+      
+      if (wrapper) {
+        console.log('Wrapper classes:', wrapper.className);
+        const wrapperStyles = window.getComputedStyle(wrapper);
+        console.log('Wrapper background:', wrapperStyles.background);
+        console.log('Wrapper display:', wrapperStyles.display);
+      }
+      
+      if (shortsContainer) {
+        const containerStyles = window.getComputedStyle(shortsContainer);
+        console.log('Shorts Container max-width:', containerStyles.maxWidth);
+        console.log('Shorts Container background:', containerStyles.background);
+      }
+      
+      if (player) {
+        const playerStyles = window.getComputedStyle(player);
+        console.log('Player padding-bottom:', playerStyles.paddingBottom);
+        console.log('Player height:', playerStyles.height);
+        console.log('Player position:', playerStyles.position);
+        console.log('Player width:', playerStyles.width);
+        console.log('Player background:', playerStyles.background);
+        
+        // Check iframe inside player
+        setTimeout(function() {
+          const iframe = player.querySelector('iframe');
+          if (iframe) {
+            const iframeStyles = window.getComputedStyle(iframe);
+            console.log('=== Iframe Styles ===');
+            console.log('Iframe position:', iframeStyles.position);
+            console.log('Iframe width:', iframeStyles.width);
+            console.log('Iframe height:', iframeStyles.height);
+            console.log('Iframe top:', iframeStyles.top);
+            console.log('Iframe left:', iframeStyles.left);
+          } else {
+            console.log('Iframe not found in player');
+          }
+        }, 2000); // Check after video loads
+      }
+      console.log('========================');
+    });
+  </script>
+
+<section
+  class="
+    featured-video
+    featured-video--youtube-shorts
+    section
+    {{ section.settings.css_class }}
+    is-width-{{ section.settings.width }}
+    {% if section.settings.mobile_text_below_video == true %}
+      mobile-text--below-media
+    {% else %}
+      mobile-text--over-media
+    {% endif %}
+      has-video-added
+  "
+  {% if section.settings.animation != "none" %}
+    data-scroll-class="{{ section.settings.animation }}"
+  {% endif %}
+>
+  <div
+    class="
+      container
+      video__container
+      {% if section.settings.width == 'wide' or section.settings.width == 'half' %}
+        equal-columns--outside-trim
+      {% endif %}
+    "
+  >
+    <div class="one-whole column">
+      <div class="shorts-container">
+      <deferred-iframe
+        class="
+          video-wrapper
+          overlay--{{ section.settings.overlay_style }}
+          video-present--true
+        "
+      >
+      <div class="image-wrapper" data-image-element>
+        <button type="button" class="deferred-play-button">
+            <svg class="play-icon-button-control" width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="60" fill="white"></rect><path fill-rule="evenodd" clip-rule="evenodd" d="M23 20V40L39 29.4248L23 20Z" fill="#323232"></path></svg>
+        </button>
+
+         {% if image != blank %}
+             {%
+               render 'image-element',
+               image: image,
+               alt: image.alt,
+               additional_classes: 'placeholder-img',
+               stretch_width: true,
+               focal_point: image.presentation.focal_point,
+             %}
+         {% else %}
+           {% assign you_tube_thumbnail = 'https://img.youtube.com/vi/VIDEO_ID/' | replace: 'VIDEO_ID', video_id %}
+             {%
+               render 'jp-youtube-thumbnail',
+               baseThumbnailURL: you_tube_thumbnail,
+               additional_classes: 'placeholder-img',
+               stretch_width: true
+             %}
+         {% endif %}
+       </div>
+
+         <div class="video-{{ id }} youtube-iframe-player" data-video-element>
+           <template>
+                 <iframe 
+                   src="https://www.youtube.com/embed/{{ video_id }}?autoplay=1&amp;iv_load_policy=3&amp;modestbranding=1&amp;playsinline=1&amp;showinfo=0&amp;rel=0&amp;enablejsapi=1{{ iframe_settings }}" 
+                   allowfullscreen 
+                   allowtransparency 
+                   allow="autoplay; encrypted-media"
+                   ></iframe>
+           </template>                
+         </div>
+
+        <div class="video__text-container" data-video-text-container>
+          <div
+            class="
+              video__text
+              is-justify-{{ section.settings.vertical_text_position }}
+              {% if pretext == blank and title == blank and subtitle == blank and button_label == blank %}
+                hidden
+              {% endif %}
+            "
+          >
+            <div
+              class="
+                video__text-outer-wrapper
+                is-flex
+                is-justify-{{ section.settings.horizontal_text_position }}
+              "
+            >
+              <div
+                class="
+                  video__text-wrapper
+                  text-align-{{ section.settings.text_align }}
+                  {% if section.settings.mobile_text_alignment != 'none' %}
+                    text-align--mobile-{{ section.settings.mobile_text_alignment }}
+                  {% endif %}
+                "
+              >
+                <div class="overlay"></div>
+
+                {% if pretext != blank %}
+                  <p
+                    class="
+                      pretext
+                      subtitle
+                      banner__subheading
+                      video__subtitle
+                    "
+                  >
+                    {{- pretext -}}
+                  </p>
+                {% endif %}
+
+                {% if title != blank %}
+                  <h2
+                    class="
+                      title
+                      video__title
+                      banner__heading
+                      has-small-padding-top
+                    "
+                  >
+                    <span>{{ title }}</span>
+                  </h2>
+                {% endif %}
+
+                {% if subtitle != blank %}
+                  <p
+                    class="
+                      subtitle
+                      video__subtitle
+                      banner__subheading
+                      has-small-padding-top
+                    "
+                  >
+                    {{- subtitle -}}
+                  </p>
+                {% endif %}
+
+                {% if button_label != blank %}
+                  <button class="button {{ button_style }}" data-play-button>
+                    {{- button_label -}}
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+         </div>
+       </deferred-iframe>
+       </div>
+    </div>
+  </div>
+
+  {% comment %} JavaScript {% endcomment %}
+
+  <script data-theme-editor-load-script src="{{ 'z__jsYouTubeIframe.js' | asset_url }}" defer></script>
+</section>
+
+{% endunless %}
+
+{% schema %}
+  {
+    "name": "JPC YouTube Video Shorts",
+    "class": "youtube-video-section  overlaid-header-option",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Video"
+      },
+      {
+        "type": "text",
+        "id": "iframe_video",
+        "label": "YouTube Shorts URL",
+        "info": "Enter a YouTube Shorts URL (e.g., https://www.youtube.com/shorts/VIDEO_ID). Regular YouTube URLs also work.",
+        "default": "https://www.youtube.com/shorts/8NxS0vrPcsA"
+      },
+      {
+        "type": "url",
+        "id": "iframe_metafield_url",
+        "label": "Metafield URL",
+        "info": "Optional value for stores that relies on metafields to display URLs. If applied it will override other URLs."
+      },
+      {
+        "type": "checkbox",
+        "id": "autoloop",
+        "label": "Autoloop video",
+        "default": true
+      },
+      {
+        "type": "checkbox",
+        "id": "mute_video",
+        "label": "Mute video",
+        "default": false
+      },
+      {
+        "type": "header",
+        "content": "Display"
+      },
+      {
+        "type": "range",
+        "id": "max_width",
+        "label": "Maximum width",
+        "min": 300,
+        "max": 800,
+        "step": 50,
+        "default": 400,
+        "unit": "px",
+        "info": "Limits the width of the vertical video player. On mobile, the player will use 100% width."
+      },
+      {
+        "type": "header",
+        "content": "Content"
+      },
+      {
+        "type": "image_picker",
+        "id": "image",
+        "label": "Cover image",
+        "info": "1600 x 900px recommended"
+      },
+      {
+        "type": "text",
+        "id": "pretext",
+        "label": "Preheading"
+      },
+      {
+        "type": "text",
+        "id": "title",
+        "label": "Heading",
+        "default": "Featured video"
+      },
+      {
+        "type": "text",
+        "id": "subtitle",
+        "label": "Subheading",
+        "default": "Embed a Youtube video."
+      },
+      {
+        "type": "color",
+        "id": "pretext_color",
+        "label": "Preheading",
+        "default": "#000000"
+      },
+      {
+        "type": "color",
+        "id": "heading_color",
+        "label": "Heading",
+        "default": "#000000"
+      },
+      {
+        "type": "color",
+        "id": "subheading_color",
+        "label": "Subheading",
+        "default": "#000000"
+      },
+      {
+        "type": "select",
+        "id": "text_align",
+        "label": "Text alignment",
+        "options": [
+          {
+            "value": "left",
+            "label": "Left"
+          },
+          {
+            "value": "center",
+            "label": "Center"
+          },
+          {
+            "value": "right",
+            "label": "Right"
+          }
+        ],
+        "default": "center"
+      },
+      {
+        "type": "select",
+        "id": "horizontal_text_position",
+        "label": "Horizontal text position",
+        "options": [
+          {
+            "value": "left",
+            "label": "Left"
+          },
+          {
+            "value": "center",
+            "label": "Center"
+          },
+          {
+            "value": "right",
+            "label": "Right"
+          }
+        ],
+        "default": "center"
+      },
+      {
+        "type": "select",
+        "id": "vertical_text_position",
+        "label": "Vertical text position",
+        "options": [
+          {
+            "value": "start",
+            "label": "Top"
+          },
+          {
+            "value": "center",
+            "label": "Middle"
+          },
+          {
+            "value": "end",
+            "label": "Bottom"
+          }
+        ],
+        "default": "center"
+      },
+      {
+        "type": "text",
+        "id": "button_label",
+        "label": "Button label",
+        "default": "Play video"
+      },
+      {
+        "type": "select",
+        "id": "button_style",
+        "label": "Button style",
+        "default": "button--secondary",
+        "options": [
+          {
+            "value": "button--primary",
+            "label": "Primary"
+          },
+          {
+            "value": "button--secondary",
+            "label": "Secondary"
+          },
+          {
+            "value": "button--link-style",
+            "label": "Link style"
+          }
+        ]
+      },
+      {
+        "type": "range",
+        "id": "text_width",
+        "label": "Text width",
+        "min": 40,
+        "max": 100,
+        "default": 70,
+        "unit": "%"
+      },
+      {
+        "type": "header",
+        "content": "Overlay"
+      },
+      {
+        "type": "select",
+        "id": "overlay_style",
+        "label": "Overlay style",
+        "default": "text_only",
+        "options": [
+          {
+            "value": "full",
+            "label": "Full"
+          },
+          {
+            "value": "text_only",
+            "label": "Text only"
+          },
+          {
+            "value": "none",
+            "label": "None"
+          }
+        ]
+      },
+      {
+        "type": "color",
+        "id": "video_overlay_color",
+        "label": "Overlay",
+        "default": "#ffffff"
+      },
+      {
+        "type": "range",
+        "id": "background_opacity",
+        "label": "Overlay opacity",
+        "default": 77,
+        "min": 0,
+        "max": 100,
+        "unit": "%"
+      },
+      {
+        "type": "color",
+        "id": "gradient",
+        "label": "Overlay gradient",
+        "default": "rgba(0,0,0,0)"
+      },
+      {
+        "type": "range",
+        "id": "gradient_rotation",
+        "label": "Gradient rotation",
+        "min": 0,
+        "max": 180,
+        "default": 180,
+        "unit": "deg",
+        "step": 10
+      },
+      {
+        "type": "header",
+        "content": "Layout"
+      },
+      {
+        "type": "select",
+        "id": "width",
+        "label": "Width",
+        "default": "standard",
+        "options": [
+          {
+            "value": "half",
+            "label": "Half"
+          },
+          {
+            "value": "standard",
+            "label": "Standard"
+          },
+          {
+            "value": "wide",
+            "label": "Wide"
+          }
+        ]
+      },
+      {
+        "type": "range",
+        "id": "padding_top",
+        "label": "Top spacing",
+        "min": 0,
+        "max": 80,
+        "default": 20,
+        "unit": "px"
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom",
+        "label": "Bottom spacing",
+        "min": 0,
+        "max": 80,
+        "default": 20,
+        "unit": "px"
+      },
+      {
+        "type": "range",
+        "id": "padding_left",
+        "label": "Left spacing",
+        "min": 0,
+        "max": 80,
+        "default": 0,
+        "unit": "px"
+      },
+      {
+        "type": "range",
+        "id": "padding_right",
+        "label": "Right spacing",
+        "default": 0,
+        "min": 0,
+        "max": 80,
+        "unit": "px"
+      },
+      {
+        "type": "select",
+        "id": "animation",
+        "label": "Animation",
+        "default": "none",
+        "options": [
+          {
+            "value": "none",
+            "label": "None"
+          },
+          {
+            "value": "fadeIn",
+            "label": "Fade in"
+          },
+          {
+            "value": "fadeInDown",
+            "label": "Fade in down"
+          },
+          {
+            "value": "fadeInLeft",
+            "label": "Fade in left"
+          },
+          {
+            "value": "fadeInRight",
+            "label": "Fade in right"
+          },
+          {
+            "value": "slideInLeft",
+            "label": "Slide in left"
+          },
+          {
+            "value": "slideInRight",
+            "label": "Slide in right"
+          },
+          {
+            "value": "zoomIn",
+            "label": "Zoom in"
+          }
+        ]
+      },
+      {
+        "type": "header",
+        "content": "Mobile text"
+      },
+      {
+        "type": "checkbox",
+        "id": "mobile_text_below_video",
+        "label": "Show text below image on mobile",
+        "default": true
+      },
+      {
+        "type": "color",
+        "id": "pretext_color_mobile",
+        "label": "Preheading",
+        "default": "rgba(0,0,0,0)"
+      },
+      {
+        "type": "color",
+        "id": "heading_color_mobile",
+        "label": "Heading",
+        "default": "rgba(0,0,0,0)"
+      },
+      {
+        "type": "color",
+        "id": "subheading_color_mobile",
+        "label": "Subheading",
+        "default": "rgba(0,0,0,0)"
+      },
+      {
+        "type": "select",
+        "id": "mobile_text_alignment",
+        "label": "Mobile text alignment",
+        "options": [
+          {
+            "value": "none",
+            "label": "Same as desktop"
+          },
+          {
+            "value": "left",
+            "label": "Left"
+          },
+          {
+            "value": "center",
+            "label": "Center"
+          },
+          {
+            "value": "right",
+            "label": "Right"
+          }
+        ],
+        "default": "none"
+      },
+      {
+        "type": "header",
+        "content": "Mobile layout"
+      },
+      {
+        "type": "range",
+        "id": "padding_top_mobile",
+        "label": "Mobile top spacing",
+        "min": 0,
+        "max": 80,
+        "default": 20,
+        "unit": "px"
+      },
+      {
+        "type": "range",
+        "id": "padding_bottom_mobile",
+        "label": "Mobile bottom spacing",
+        "min": 0,
+        "max": 80,
+        "default": 20,
+        "unit": "px"
+      },
+      {
+        "type": "header",
+        "content": "Advanced",
+        "info": "[Learn more](https://help.outofthesandbox.com/hc/en-us/articles/360022329373)"
+      },
+      {
+        "type": "text",
+        "id": "css_class",
+        "label": "CSS Class"
+      },
+      {
+        "type": "textarea",
+        "id": "custom_css",
+        "label": "Custom CSS"
+      }
+    ],
+    "presets": [{
+      "name": "JP YouTube Video Shorts",
+      "category": "Video",
+      "settings": {
+        "iframe_video": "https://www.youtube.com/shorts/8NxS0vrPcsA",
+        "button_label": "Play Video"
+      }
+    }],
+    "disabled_on": {
+      "groups": [
+        "*"
+      ]
+    }
+  }
+{% endschema %}
